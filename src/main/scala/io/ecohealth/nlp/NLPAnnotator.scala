@@ -73,16 +73,19 @@ class NLPAnnotator {
     }
 
     def guessReferenceDate(timexAnnotations: java.util.List[edu.stanford.nlp.util.CoreMap]): Option[String] = {
-        val annotation = timexAnnotations.iterator.next
-        val tokens = annotation.get(classOf[CoreAnnotations.TokensAnnotation])
-        val start = tokens.get(0).get(classOf[CoreAnnotations.CharacterOffsetBeginAnnotation])
-        val temporal = annotation.get(classOf[TimeExpression.Annotation]).getTemporal()
-        val label = temporal.toISOString
-        val tempType = temporal.getTimexType.toString
+        if (timexAnnotations.length > 0) {
+            val annotation = timexAnnotations.iterator.next
+            val tokens = annotation.get(classOf[CoreAnnotations.TokensAnnotation])
+            val start = tokens.get(0).get(classOf[CoreAnnotations.CharacterOffsetBeginAnnotation])
+            val temporal = annotation.get(classOf[TimeExpression.Annotation]).getTemporal()
+            val label = temporal.toISOString
+            val tempType = temporal.getTimexType.toString
 
-        // Let's look for a date that starts within the first 10 characters of the document, and is a full DATE
-        if (start <= 10 && tempType == "DATE" && isoDatePatt.findFirstMatchIn(label).isDefined) Some(label.substring(0, 10))
-        else None
-
+            // Let's look for a date that starts within the first 10 characters of the document, and is a full DATE
+            if (start <= 10 && tempType == "DATE" && isoDatePatt.findFirstMatchIn(label).isDefined) Some(label.substring(0, 10))
+            else None
+        } else {
+            None
+        }
     }
 }
