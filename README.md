@@ -24,3 +24,11 @@ But, it’s not been updated in 2 years and is on an old stanford nlp version
 
 There is also this: http://www.reidswanson.com/javadocs/stanfordtools/com/reidswanson/stanford/tools/serialize/CoreNlpSerializer.html
 I don’t know how standard it is or how widely used. I still prefer the approach of only outputting the data we’re interested in.
+
+## Why can't we use a swagger-generated client?
+
+It doesn't handle Maps:
+
+https://github.com/wordnik/swagger-spec/issues/38
+
+So the api docs for this server are wrong.
