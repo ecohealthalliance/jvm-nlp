@@ -62,6 +62,7 @@ class NLPAnnotator {
         } toList
 
         val tiers = Map(("tokens", getTokenTier(annotation)),
+                        ("sentences", getSentenceTier(annotation)),
                         ("pos", getPOSTier(annotation)),
                         ("times", AnnoTier(spans)))
 
@@ -84,6 +85,23 @@ class NLPAnnotator {
         } else {
             None
         }
+    }
+
+    def getSentenceTier(annotation: Annotation): AnnoTier = {
+
+        var sentenceAnnotations = annotation.get(classOf[CoreAnnotations.SentencesAnnotation])
+
+        val spans = sentenceAnnotations.iterator map { sentenceAnnotation =>
+            val tokens = sentenceAnnotation.get(classOf[CoreAnnotations.TokensAnnotation])
+            val start = tokens.get(0).get(classOf[CoreAnnotations.CharacterOffsetBeginAnnotation])
+            val stop = tokens.get(tokens.size() - 1).get(classOf[CoreAnnotations.CharacterOffsetEndAnnotation])
+
+            AnnoSpan(start, stop)
+            
+        } toList
+
+        AnnoTier(spans)
+
     }
 
     def getTokenTier(annotation: Annotation): AnnoTier = {
