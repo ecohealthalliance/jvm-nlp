@@ -1,5 +1,7 @@
 package io.ecohealth.nlp.models
 
-class AnnoSpan
-
-case class AnnoSpanTemporal(start: Int, stop: Int, label: String, `type`: String) extends AnnoSpan
+case class AnnoSpan(
+    start: Int,
+    stop: Int,
+    label: Option[String] = None,
+    `type`: Option[String] = None)

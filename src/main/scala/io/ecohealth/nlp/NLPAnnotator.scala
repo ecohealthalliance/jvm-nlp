@@ -27,48 +27,45 @@ class NLPAnnotator {
     pipeline.addAnnotator(new POSTaggerAnnotator(false))
     pipeline.addAnnotator(new TimeAnnotator("sutime", props))
 
-    def annotate(text: String, referenceDateOpt: Option[String] = None): AnnoDoc = {
+    def annotate(doc: AnnoDoc): AnnoDoc = {
 
-        val referenceDate = referenceDateOpt getOrElse {
-            new SimpleDateFormat("yyyy-MM-dd").format(new Date())
-        }
+        val referenceDate = doc.date getOrElse new Date()
         var docDate = referenceDate
 
-        println("referenceDate:", referenceDate)
-
-
-        val annotation = new Annotation(text)
-        annotation.set(classOf[CoreAnnotations.DocDateAnnotation], referenceDate)
+        val annotation = new Annotation(doc.text)
+        annotation.set(classOf[CoreAnnotations.DocDateAnnotation],
+            new SimpleDateFormat("yyyy-MM-dd").format(referenceDate))
         pipeline.annotate(annotation)
         var timexAnnotations = annotation.get(classOf[TimeAnnotations.TimexAnnotations])
 
-        // If we didn't get a reference date, let's try to guess one from the
-        // text itself, and re-annotate with respect to that guessed date.
-        if (! referenceDateOpt.isDefined) {
-            println("referenceDateOpt was not defined")
+        // If we didn't get a reference date from the doc, let's try to guess
+        // one from the text itself, and re-annotate with respect to that guessed date.
+        if (! doc.date.isDefined) {
             val guessedReferenceDate = guessReferenceDate(timexAnnotations)
             if (guessedReferenceDate.isDefined) {
-                println("guessedReferenceDate was defined", guessedReferenceDate)
                 // annotation = new Annotation(text)
                 annotation.set(classOf[CoreAnnotations.DocDateAnnotation], guessedReferenceDate.get)
                 pipeline.annotate(annotation)
-                docDate = guessedReferenceDate.get
+                docDate = new SimpleDateFormat("yyyy-MM-dd").parse(guessedReferenceDate.get)
                 timexAnnotations = annotation.get(classOf[TimeAnnotations.TimexAnnotations])
-                println("docDate", docDate)
             }
         }
 
-        val spans = timexAnnotations.iterator map { annotation =>
-            val tokens = annotation.get(classOf[CoreAnnotations.TokensAnnotation])
+        val spans = timexAnnotations.iterator map { timexAnnotation =>
+            val tokens = timexAnnotation.get(classOf[CoreAnnotations.TokensAnnotation])
             val start = tokens.get(0).get(classOf[CoreAnnotations.CharacterOffsetBeginAnnotation])
             val stop = tokens.get(tokens.size() - 1).get(classOf[CoreAnnotations.CharacterOffsetEndAnnotation])
-            val temporal = annotation.get(classOf[TimeExpression.Annotation]).getTemporal()
+            val temporal = timexAnnotation.get(classOf[TimeExpression.Annotation]).getTemporal()
             val label = temporal.toISOString
             val tempType = temporal.getTimexType.toString
-            AnnoSpanTemporal(start, stop, label, tempType)
+            AnnoSpan(start, stop, label=Some(label), `type`=Some(tempType))
         } toList
 
-        AnnoDoc(text, Map(("times", AnnoTier(spans))), docDate)
+        val tiers = Map(("tokens", getTokenTier(annotation)),
+                        ("pos", getPOSTier(annotation)),
+                        ("times", AnnoTier(spans)))
+
+        doc.copy(tiers=doc.tiers ++ tiers, date=Some(docDate))
 
     }
 
@@ -88,4 +85,32 @@ class NLPAnnotator {
             None
         }
     }
+
+    def getTokenTier(annotation: Annotation): AnnoTier = {
+
+        var tokenAnnotations = annotation.get(classOf[CoreAnnotations.TokensAnnotation])
+
+        val spans = tokenAnnotations.iterator map { tokenAnnotation =>
+            AnnoSpan(tokenAnnotation.beginPosition,
+                     tokenAnnotation.endPosition)
+        } toList
+
+        AnnoTier(spans)
+
+    }
+
+    def getPOSTier(annotation: Annotation): AnnoTier = {
+
+        var tokenAnnotations = annotation.get(classOf[CoreAnnotations.TokensAnnotation])
+
+        val spans = tokenAnnotations.iterator map { tokenAnnotation =>
+            AnnoSpan(tokenAnnotation.beginPosition,
+                     tokenAnnotation.endPosition,
+                     label=Some(tokenAnnotation.get(classOf[CoreAnnotations.PartOfSpeechAnnotation])))
+        } toList
+
+        AnnoTier(spans)
+
+    }
+
 }

@@ -6,7 +6,7 @@ import org.scalatra.json._
 
 import org.json4s.{DefaultFormats, Formats}
 
-import models.AnnoDoc
+import models._
 
 class NLPController(implicit val swagger: Swagger) extends ScalatraServlet with NativeJsonSupport with SwaggerSupport  {
 
@@ -21,17 +21,14 @@ class NLPController(implicit val swagger: Swagger) extends ScalatraServlet with 
   }
 
   val getNLPAnnotations =
-    (apiOperation[List[AnnoDoc]]("getNLPAnnotations")
+    (apiOperation[AnnoDoc]("getNLPAnnotations")
       summary "Get all the NLP annotations for a document"
       notes "Process a document through the Stanford NLP pipeline and get all annotations"
-      parameter queryParam[String]("text").description("The text content of the document to be annotated")
-      parameter queryParam[Option[String]]("referenceDate").description("The date with respect to which the document will be time-annotated"))
+      parameter bodyParam[AnnoDoc]("doc").description("The AnnoDoc to be annotated"))
 
   post("/getNLPAnnotations", operation(getNLPAnnotations)){
-    params.get("text") match {
-      case Some(text) => annotator.annotate(text, params.get("referenceDate"))
-      case None => halt(400, "did not find text POST parameter")
-    }
+    val doc = parsedBody.extract[AnnoDoc]
+    annotator.annotate(doc)
   }
 
 }
