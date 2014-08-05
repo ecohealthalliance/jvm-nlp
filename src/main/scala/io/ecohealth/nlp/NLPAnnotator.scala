@@ -97,7 +97,7 @@ class NLPAnnotator {
             val stop = tokens.get(tokens.size() - 1).get(classOf[CoreAnnotations.CharacterOffsetEndAnnotation])
 
             AnnoSpan(start, stop)
-            
+
         } toList
 
         AnnoTier(spans)
