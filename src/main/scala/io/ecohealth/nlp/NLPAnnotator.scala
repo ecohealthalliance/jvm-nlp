@@ -19,13 +19,16 @@ class NLPAnnotator {
 
     val isoDatePatt = """^\d\d\d\d\-\d\d\-\d\d""".r
 
-    val props = new Properties()
+    val timeProps = new Properties()
+    timeProps.setProperty("sutime.includeRanges", "true")
+    timeProps.setProperty("sutime.markTimeRanges", "true")
+    timeProps.setProperty("teRelHeurLevel", "more")
 
     val pipeline = new AnnotationPipeline()
     pipeline.addAnnotator(new PTBTokenizerAnnotator(false))
     pipeline.addAnnotator(new WordsToSentencesAnnotator(false))
     pipeline.addAnnotator(new POSTaggerAnnotator(false))
-    pipeline.addAnnotator(new TimeAnnotator("sutime", props))
+    pipeline.addAnnotator(new TimeAnnotator("sutime", timeProps))
 
     def annotate(doc: AnnoDoc): AnnoDoc = {
 
@@ -56,9 +59,33 @@ class NLPAnnotator {
             val start = tokens.get(0).get(classOf[CoreAnnotations.CharacterOffsetBeginAnnotation])
             val stop = tokens.get(tokens.size() - 1).get(classOf[CoreAnnotations.CharacterOffsetEndAnnotation])
             val temporal = timexAnnotation.get(classOf[TimeExpression.Annotation]).getTemporal()
-            val label = temporal.toISOString
-            val tempType = temporal.getTimexType.toString
-            AnnoSpan(start, stop, label=Some(label), `type`=Some(tempType))
+            val labelOpt =
+                if (temporal.toISOString != null) Some(temporal.toISOString)
+                else if (temporal.toString != null) Some(temporal.toString)
+                else None
+
+            val temporalType = temporal.getTimexType.toString
+            val timePoint =
+                if (temporalType == "DATE") getTimePointFromTemporal(temporal)
+                else None
+            val timeRange =
+                if (temporalType == "DATE") getTimeRangeFromTemporal(temporal)
+                else None
+            val timeDuration =
+                if (temporalType == "DURATION") getTimeDurationFromTemporal(temporal)
+                else None
+            val timeSet =
+                if (temporalType == "SET") getTimeSetFromTemporal(temporal)
+                else None
+            AnnoSpan(
+                start,
+                stop,
+                label=labelOpt,
+                `type`=Some(temporalType),
+                timePoint=timePoint,
+                timeRange=timeRange,
+                timeDuration=timeDuration,
+                timeSet=timeSet)
         } toList
 
         val tiers = Map(("tokens", getTokenTier(annotation)),
@@ -68,6 +95,79 @@ class NLPAnnotator {
 
         doc.copy(tiers=doc.tiers ++ tiers, date=Some(docDate))
 
+    }
+
+    def getTimePointFromTemporal(temporal: SUTime.Temporal): Option[TimePoint] = {
+        val mod = if (temporal.getMod == null) None else Some(temporal.getMod)
+        getTimePointFromTime(temporal.getTime, mod)
+    }
+
+    def getTimeDurationFromTemporal(temporal: SUTime.Temporal): Option[TimeDuration] = {
+        val mod = if (temporal.getMod == null) None else Some(temporal.getMod)
+        val isoOpt = if (temporal.toISOString == null) None else Some(temporal.toISOString)
+        isoOpt map { iso => TimeDuration(iso, mod) }
+    }
+
+    def getTimeSetFromTemporal(temporal: SUTime.Temporal): Option[TimeSet] = {
+        val mod = if (temporal.getMod == null) None else Some(temporal.getMod)
+        val isoOpt = if (temporal.toString == null) None else Some(temporal.toString)
+        isoOpt map { iso => TimeSet(iso, mod) }
+    }
+
+    def getTimeRangeFromTemporal(temporal: SUTime.Temporal): Option[TimeRange] = {
+        val range = temporal.getRange
+        val mod = if (temporal.getMod == null) None else Some(temporal.getMod)
+        if (range == null) {
+            return None
+        }
+
+        val beginMod = if (range.begin.getMod == null) None else Some(range.begin.getMod)
+        val beginIso = range.begin.toISOString
+        val beginTimePoint = if (beginIso == null) {
+            None
+        } else {
+            getTimePointFromIso(beginIso, new TimePoint(mod=beginMod))
+        }
+        val endIso = range.end.toISOString
+        val endMod = if (range.end.getMod == null) None else Some(range.end.getMod)
+        val endTimePoint = if (endIso == null) {
+            None
+        } else {
+            getTimePointFromIso(endIso, new TimePoint(mod=endMod))
+        }
+        if (beginTimePoint.isDefined && endTimePoint.isDefined) {
+            Some(TimeRange(beginTimePoint.get, endTimePoint.get, mod))
+        } else {
+            None
+        }
+
+    }
+
+    def getTimePointFromTime(time: SUTime.Time, mod: Option[String] = None): Option[TimePoint] = {
+        val iso = time.toISOString
+        if (iso == null) {
+            return None
+        } else {
+            getTimePointFromIso(iso, new TimePoint(mod=mod))
+        }
+    }
+
+    def getTimePointFromIso(iso: String, timePoint: TimePoint=new TimePoint): Option[TimePoint] = {
+        if (iso.length == 4) {
+            Some(timePoint.copy(year=Some(iso)))
+        } else if (iso.length == 7) {
+            getTimePointFromIso(iso.substring(0, 4), timePoint.copy(month=Some(iso.substring(5, 7))))
+        } else if (iso.length == 10) {
+            getTimePointFromIso(iso.substring(0, 7), timePoint.copy(date=Some(iso.substring(8, 10))))
+        } else if (iso.length == 13) {
+            getTimePointFromIso(iso.substring(0, 10), timePoint.copy(hour=Some(iso.substring(11, 13))))
+        } else if (iso.length == 16) {
+            getTimePointFromIso(iso.substring(0, 13), timePoint.copy(minute=Some(iso.substring(14, 16))))
+        } else if (iso.length == 19) {
+            getTimePointFromIso(iso.substring(0, 16), timePoint.copy(second=Some(iso.substring(17, 19))))
+        } else {
+            None
+        }
     }
 
     def guessReferenceDate(timexAnnotations: java.util.List[edu.stanford.nlp.util.CoreMap]): Option[String] = {
