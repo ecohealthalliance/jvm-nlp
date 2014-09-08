@@ -66,7 +66,7 @@ class NLPAnnotator {
 
             val temporalType = temporal.getTimexType.toString
             val timePoint =
-                if (temporalType == "DATE") getTimePointFromTemporal(temporal)
+                if (temporalType == "DATE" || temporalType == "TIME") getTimePointFromTemporal(temporal)
                 else None
             val timeRange =
                 if (temporalType == "DATE") getTimeRangeFromTemporal(temporal)
