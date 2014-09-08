@@ -69,7 +69,7 @@ class NLPAnnotator {
                 if (temporalType == "DATE" || temporalType == "TIME") getTimePointFromTemporal(temporal)
                 else None
             val timeRange =
-                if (temporalType == "DATE") getTimeRangeFromTemporal(temporal)
+                if (temporalType == "DATE" || temporalType == "DURATION") getTimeRangeFromTemporal(temporal)
                 else None
             val timeDuration =
                 if (temporalType == "DURATION") getTimeDurationFromTemporal(temporal)
@@ -120,16 +120,21 @@ class NLPAnnotator {
         if (range == null) {
             return None
         }
+        val begin = range.begin
+        val end = range.end
+        if (begin == null || end == null) {
+            return None
+        }
 
-        val beginMod = if (range.begin.getMod == null) None else Some(range.begin.getMod)
+        val beginMod = if (begin.getMod == null) None else Some(begin.getMod)
         val beginIso = range.begin.toISOString
         val beginTimePoint = if (beginIso == null) {
             None
         } else {
             getTimePointFromIso(beginIso, new TimePoint(mod=beginMod))
         }
-        val endIso = range.end.toISOString
-        val endMod = if (range.end.getMod == null) None else Some(range.end.getMod)
+        val endIso = end.toISOString
+        val endMod = if (end.getMod == null) None else Some(end.getMod)
         val endTimePoint = if (endIso == null) {
             None
         } else {
