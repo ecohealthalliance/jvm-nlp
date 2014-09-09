@@ -65,11 +65,12 @@ class NLPAnnotator {
                 else None
 
             val temporalType = temporal.getTimexType.toString
-            val timePoint =
-                if (temporalType == "DATE" || temporalType == "TIME") getTimePointFromTemporal(temporal)
-                else None
             val timeRange =
                 if (temporalType == "DATE" || temporalType == "DURATION") getTimeRangeFromTemporal(temporal)
+                else None
+            val timePoint =
+                if (timeRange.isDefined) None
+                else if (temporalType == "DATE" || temporalType == "TIME") getTimePointFromTemporal(temporal)
                 else None
             val timeDuration =
                 if (temporalType == "DURATION") getTimeDurationFromTemporal(temporal)
@@ -159,17 +160,17 @@ class NLPAnnotator {
 
     def getTimePointFromIso(iso: String, timePoint: TimePoint=new TimePoint): Option[TimePoint] = {
         if (iso.length == 4) {
-            Some(timePoint.copy(year=Some(iso)))
+            Some(timePoint.copy(year=Some(iso.toInt)))
         } else if (iso.length == 7) {
-            getTimePointFromIso(iso.substring(0, 4), timePoint.copy(month=Some(iso.substring(5, 7))))
+            getTimePointFromIso(iso.substring(0, 4), timePoint.copy(month=Some(iso.substring(5, 7).toInt)))
         } else if (iso.length == 10) {
-            getTimePointFromIso(iso.substring(0, 7), timePoint.copy(date=Some(iso.substring(8, 10))))
+            getTimePointFromIso(iso.substring(0, 7), timePoint.copy(date=Some(iso.substring(8, 10).toInt)))
         } else if (iso.length == 13) {
-            getTimePointFromIso(iso.substring(0, 10), timePoint.copy(hour=Some(iso.substring(11, 13))))
+            getTimePointFromIso(iso.substring(0, 10), timePoint.copy(hour=Some(iso.substring(11, 13).toInt)))
         } else if (iso.length == 16) {
-            getTimePointFromIso(iso.substring(0, 13), timePoint.copy(minute=Some(iso.substring(14, 16))))
+            getTimePointFromIso(iso.substring(0, 13), timePoint.copy(minute=Some(iso.substring(14, 16).toInt)))
         } else if (iso.length == 19) {
-            getTimePointFromIso(iso.substring(0, 16), timePoint.copy(second=Some(iso.substring(17, 19))))
+            getTimePointFromIso(iso.substring(0, 16), timePoint.copy(second=Some(iso.substring(17, 19).toInt)))
         } else {
             None
         }

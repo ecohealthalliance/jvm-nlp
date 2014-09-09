@@ -1,12 +1,12 @@
 package io.ecohealth.nlp.models
 
 case class TimePoint(
-    year: Option[String]=None,
-    month: Option[String]=None,
-    date: Option[String]=None,
-    hour: Option[String]=None,
-    minute: Option[String]=None,
-    second: Option[String]=None,
+    year: Option[Int]=None,
+    month: Option[Int]=None,
+    date: Option[Int]=None,
+    hour: Option[Int]=None,
+    minute: Option[Int]=None,
+    second: Option[Int]=None,
     mod: Option[String]=None
     )
 
