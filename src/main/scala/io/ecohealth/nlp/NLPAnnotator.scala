@@ -159,8 +159,11 @@ class NLPAnnotator {
     }
 
     def getTimePointFromIso(iso: String, timePoint: TimePoint=new TimePoint): Option[TimePoint] = {
-        if (iso.length == 4) {
-            Some(timePoint.copy(year=Some(iso.toInt)))
+        if (Set("PAST_REF", "FUTURE_REF").contains(iso)) {
+            return None
+        } else if (iso.length == 4) {
+            if (iso == "XXXX") Some(timePoint)
+            else Some(timePoint.copy(year=Some(iso.toInt)))
         } else if (iso.length == 7) {
             getTimePointFromIso(iso.substring(0, 4), timePoint.copy(month=Some(iso.substring(5, 7).toInt)))
         } else if (iso.length == 10) {
