@@ -1,11 +1,11 @@
-# EcoHelath JVM API
+# EcoHealth JVM API
 
 A [Scalatra](http://www.scalatra.org/2.3/guides/swagger.html) API server to return NLP annotations.
 
 ## How to run the server
 
 ```sh
-$ git clone https://github.com/ecohelath/jvm-nlp.git
+$ git clone https://github.com/ecohealthalliance/jvm-nlp.git
 $ cd jvm-nlp
 $ chmod +x sbt
 $ ./sbt
