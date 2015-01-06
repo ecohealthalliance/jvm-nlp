@@ -204,8 +204,9 @@ class NLPAnnotator {
             val tokens = sentenceAnnotation.get(classOf[CoreAnnotations.TokensAnnotation])
             val start = tokens.get(0).get(classOf[CoreAnnotations.CharacterOffsetBeginAnnotation])
             val stop = tokens.get(tokens.size() - 1).get(classOf[CoreAnnotations.CharacterOffsetEndAnnotation])
+            val label = Some(sentenceAnnotation.get(classOf[CoreAnnotations.TextAnnotation]))
 
-            AnnoSpan(start, stop)
+            AnnoSpan(start, stop, label=label)
 
         } toList
 
@@ -219,7 +220,8 @@ class NLPAnnotator {
 
         val spans = tokenAnnotations.iterator map { tokenAnnotation =>
             AnnoSpan(tokenAnnotation.beginPosition,
-                     tokenAnnotation.endPosition)
+                     tokenAnnotation.endPosition,
+                     label=Some(tokenAnnotation.get(classOf[CoreAnnotations.TextAnnotation])))
         } toList
 
         AnnoTier(spans)
