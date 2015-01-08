@@ -18,6 +18,7 @@ import models._
 class NLPAnnotator {
 
     val isoDatePatt = """^\d\d\d\d\-\d\d\-\d\d""".r
+    val intersectPatt = """.*INTERSECT (\d{4}\-\d{2}\-\d{2})$""".r
 
     val timeProps = new Properties()
     timeProps.setProperty("sutime.includeRanges", "true")
@@ -59,10 +60,16 @@ class NLPAnnotator {
             val start = tokens.get(0).get(classOf[CoreAnnotations.CharacterOffsetBeginAnnotation])
             val stop = tokens.get(tokens.size() - 1).get(classOf[CoreAnnotations.CharacterOffsetEndAnnotation])
             val temporal = timexAnnotation.get(classOf[TimeExpression.Annotation]).getTemporal()
-            val labelOpt =
-                if (temporal.toISOString != null) Some(temporal.toISOString)
-                else if (temporal.toString != null) Some(temporal.toString)
-                else None
+            val labelOpt = {
+                val labelStringOpt =
+                    if (temporal.toISOString != null) Some(temporal.toISOString)
+                    else if (temporal.toString != null) Some(temporal.toString)
+                    else None
+                labelStringOpt map { string =>
+                    val intersectMatchOpt = intersectPatt.findFirstMatchIn(string)
+                    intersectMatchOpt map { _.group(1).toString } getOrElse string
+                }
+            }
 
             val temporalType = temporal.getTimexType.toString
             val timeRange =
