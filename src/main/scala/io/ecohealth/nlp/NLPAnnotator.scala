@@ -18,6 +18,7 @@ import models._
 class NLPAnnotator {
 
     val isoDatePatt = """^\d\d\d\d\-\d\d\-\d\d""".r
+    val intersectPatt = """.*INTERSECT (\d{4}\-\d{2}\-\d{2})$""".r
 
     val timeProps = new Properties()
     timeProps.setProperty("sutime.includeRanges", "true")
@@ -59,10 +60,16 @@ class NLPAnnotator {
             val start = tokens.get(0).get(classOf[CoreAnnotations.CharacterOffsetBeginAnnotation])
             val stop = tokens.get(tokens.size() - 1).get(classOf[CoreAnnotations.CharacterOffsetEndAnnotation])
             val temporal = timexAnnotation.get(classOf[TimeExpression.Annotation]).getTemporal()
-            val labelOpt =
-                if (temporal.toISOString != null) Some(temporal.toISOString)
-                else if (temporal.toString != null) Some(temporal.toString)
-                else None
+            val labelOpt = {
+                val labelStringOpt =
+                    if (temporal.toISOString != null) Some(temporal.toISOString)
+                    else if (temporal.toString != null) Some(temporal.toString)
+                    else None
+                labelStringOpt map { string =>
+                    val intersectMatchOpt = intersectPatt.findFirstMatchIn(string)
+                    intersectMatchOpt map { _.group(1).toString } getOrElse string
+                }
+            }
 
             val temporalType = temporal.getTimexType.toString
             val timeRange =
@@ -159,23 +166,34 @@ class NLPAnnotator {
     }
 
     def getTimePointFromIso(iso: String, timePoint: TimePoint=new TimePoint): Option[TimePoint] = {
-        if (Set("PAST_REF", "FUTURE_REF").contains(iso)) {
-            return None
-        } else if (iso.length == 4) {
-            if (iso == "XXXX") Some(timePoint)
-            else Some(timePoint.copy(year=Some(iso.toInt)))
-        } else if (iso.length == 7) {
-            getTimePointFromIso(iso.substring(0, 4), timePoint.copy(month=Some(iso.substring(5, 7).toInt)))
-        } else if (iso.length == 10) {
-            getTimePointFromIso(iso.substring(0, 7), timePoint.copy(date=Some(iso.substring(8, 10).toInt)))
-        } else if (iso.length == 13) {
-            getTimePointFromIso(iso.substring(0, 10), timePoint.copy(hour=Some(iso.substring(11, 13).toInt)))
-        } else if (iso.length == 16) {
-            getTimePointFromIso(iso.substring(0, 13), timePoint.copy(minute=Some(iso.substring(14, 16).toInt)))
-        } else if (iso.length == 19) {
-            getTimePointFromIso(iso.substring(0, 16), timePoint.copy(second=Some(iso.substring(17, 19).toInt)))
-        } else {
-            None
+
+        // We can end up with some unanticipated kinds of ISO strings from the time
+        // annoator here. For example, "the morning of Tuesday, 3 [April/2012]"
+        // will yield an ISO string like "2015-01-06TMO", which we wouldn't be able
+        // to parse and it's unclear how to represent for the client. Therefore
+        // return None for any ISO strings we can't parse ints out of as expected.
+
+        try {
+            if (Set("PAST_REF", "FUTURE_REF").contains(iso)) {
+                return None
+            } else if (iso.length == 4) {
+                if (iso == "XXXX") Some(timePoint)
+                else Some(timePoint.copy(year=Some(iso.toInt)))
+            } else if (iso.length == 7) {
+                getTimePointFromIso(iso.substring(0, 4), timePoint.copy(month=Some(iso.substring(5, 7).toInt)))
+            } else if (iso.length == 10) {
+                getTimePointFromIso(iso.substring(0, 7), timePoint.copy(date=Some(iso.substring(8, 10).toInt)))
+            } else if (iso.length == 13) {
+                getTimePointFromIso(iso.substring(0, 10), timePoint.copy(hour=Some(iso.substring(11, 13).toInt)))
+            } else if (iso.length == 16) {
+                getTimePointFromIso(iso.substring(0, 13), timePoint.copy(minute=Some(iso.substring(14, 16).toInt)))
+            } else if (iso.length == 19) {
+                getTimePointFromIso(iso.substring(0, 16), timePoint.copy(second=Some(iso.substring(17, 19).toInt)))
+            } else {
+                None
+            }
+        } catch {
+            case e: java.lang.NumberFormatException => None
         }
     }
 
