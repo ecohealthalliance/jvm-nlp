@@ -25,7 +25,7 @@ class NLPAnnotator {
     val props = new Properties()
     props.put("annotators", "tokenize, ssplit, pos, lemma, ner")
     val pipeline = new StanfordCoreNLP(props)
-    
+
     val timeProps = new Properties()
     timeProps.setProperty("sutime.includeRanges", "true")
     timeProps.setProperty("sutime.markTimeRanges", "true")
@@ -111,7 +111,7 @@ class NLPAnnotator {
                     if(idx > 0) idx
                     else tokenList.length
                 }
-                
+
                 val start = token.get(classOf[CoreAnnotations.CharacterOffsetBeginAnnotation])
                 val stop = tokenList(neEndIdx - 1).get(classOf[CoreAnnotations.CharacterOffsetEndAnnotation])
                 val label = tokenList.take(neEndIdx) map { t =>
@@ -127,10 +127,10 @@ class NLPAnnotator {
                 return getNEAnnoSpans(tokenList.drop(1))
             }
         }
-        
+
         val tokens = annotation.get(classOf[CoreAnnotations.TokensAnnotation])
         val neSpans = getNEAnnoSpans(tokens.iterator.toList)
-        
+
         val tiers = Map(("tokens", getTokenTier(annotation)),
                         ("sentences", getSentenceTier(annotation)),
                         ("pos", getPOSTier(annotation)),
