@@ -1,8 +1,5 @@
 package io.ecohealth.nlp
 
-import scala.collection.immutable.List
-
-import java.util.List
 import java.util.Properties
 import java.util.Date
 import java.text.SimpleDateFormat
@@ -97,9 +94,9 @@ class NLPAnnotator {
                 timeSet=timeSet)
         } toList
 
-        def getNEAnnoSpans( tokenList : scala.collection.immutable.List[edu.stanford.nlp.ling.CoreLabel] ) : scala.collection.immutable.List[AnnoSpan] = {
+        def getNEAnnoSpans( tokenList : List[edu.stanford.nlp.ling.CoreLabel] ) : List[AnnoSpan] = {
             if(tokenList.length == 0){
-                return scala.collection.immutable.List()
+                return List()
             }
             val token = tokenList.head
             val neTag : String = token.get(classOf[CoreAnnotations.NamedEntityTagAnnotation])
