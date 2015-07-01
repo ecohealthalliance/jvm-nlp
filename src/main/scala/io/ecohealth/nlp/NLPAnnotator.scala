@@ -21,6 +21,7 @@ class NLPAnnotator {
 
     val props = new Properties()
     props.put("annotators", "tokenize, ssplit, pos, lemma, ner")
+    props.put("ner.model", "edu/stanford/nlp/models/ner/english.muc.7class.distsim.crf.ser.gz")
     val pipeline = new StanfordCoreNLP(props)
 
     val timeProps = new Properties()
@@ -100,7 +101,7 @@ class NLPAnnotator {
             }
             val token = tokenList.head
             val neTag : String = token.get(classOf[CoreAnnotations.NamedEntityTagAnnotation])
-            if(neTag.length > 0) {
+            if(neTag.length > 0 && neTag != "O") {
                 val neEndIdx = {
                     val idx = tokenList.indexWhere { t =>
                         neTag != t.get(classOf[CoreAnnotations.NamedEntityTagAnnotation])
