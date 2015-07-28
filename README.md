@@ -14,7 +14,9 @@ $ ./sbt
 
 ## Making a request
 
-```http -f POST http://localhost:8080/annotate/getNLPAnnotations content='it was 11am'```
+```
+curl -X POST http://localhost:8080/annotate/getNLPAnnotations -H "Content-Type: application/json" -d '{"text":"it was 11am in Brooklyn", "tiers":{}}'
+```
 
 ## Why not use something else?
 

@@ -1,6 +1,5 @@
 package io.ecohealth.nlp
 
-import java.util.List
 import java.util.Properties
 import java.util.Date
 import java.text.SimpleDateFormat
@@ -20,15 +19,15 @@ class NLPAnnotator {
     val isoDatePatt = """^\d\d\d\d\-\d\d\-\d\d""".r
     val intersectPatt = """.*INTERSECT (\d{4}\-\d{2}\-\d{2})$""".r
 
+    val props = new Properties()
+    props.put("annotators", "tokenize, ssplit, pos, lemma, ner")
+    props.put("ner.model", "edu/stanford/nlp/models/ner/english.muc.7class.distsim.crf.ser.gz")
+    val pipeline = new StanfordCoreNLP(props)
+
     val timeProps = new Properties()
     timeProps.setProperty("sutime.includeRanges", "true")
     timeProps.setProperty("sutime.markTimeRanges", "true")
     timeProps.setProperty("teRelHeurLevel", "more")
-
-    val pipeline = new AnnotationPipeline()
-    pipeline.addAnnotator(new PTBTokenizerAnnotator(false))
-    pipeline.addAnnotator(new WordsToSentencesAnnotator(false))
-    pipeline.addAnnotator(new POSTaggerAnnotator(false))
     pipeline.addAnnotator(new TimeAnnotator("sutime", timeProps))
 
     def annotate(doc: AnnoDoc): AnnoDoc = {
@@ -96,9 +95,44 @@ class NLPAnnotator {
                 timeSet=timeSet)
         } toList
 
+        def getNEAnnoSpans( tokenList : List[edu.stanford.nlp.ling.CoreLabel] ) : List[AnnoSpan] = {
+            if(tokenList.length == 0){
+                return List()
+            }
+            val token = tokenList.head
+            val neTag : String = token.get(classOf[CoreAnnotations.NamedEntityTagAnnotation])
+            if(neTag.length > 0 && neTag != "O") {
+                val neEndIdx = {
+                    val idx = tokenList.indexWhere { t =>
+                        neTag != t.get(classOf[CoreAnnotations.NamedEntityTagAnnotation])
+                    }
+                    if(idx > 0) idx
+                    else tokenList.length
+                }
+
+                val start = token.get(classOf[CoreAnnotations.CharacterOffsetBeginAnnotation])
+                val stop = tokenList(neEndIdx - 1).get(classOf[CoreAnnotations.CharacterOffsetEndAnnotation])
+                val label = tokenList.take(neEndIdx) map { t =>
+                    t.get(classOf[CoreAnnotations.TextAnnotation])
+                } mkString(" ")
+                return AnnoSpan(
+                    start,
+                    stop,
+                    label=Some(label),
+                    `type`=Some(neTag)
+                ) :: getNEAnnoSpans(tokenList.drop(neEndIdx))
+            } else {
+                return getNEAnnoSpans(tokenList.drop(1))
+            }
+        }
+
+        val tokens = annotation.get(classOf[CoreAnnotations.TokensAnnotation])
+        val neSpans = getNEAnnoSpans(tokens.iterator.toList)
+
         val tiers = Map(("tokens", getTokenTier(annotation)),
                         ("sentences", getSentenceTier(annotation)),
                         ("pos", getPOSTier(annotation)),
+                        ("nes", AnnoTier(neSpans)),
                         ("times", AnnoTier(spans)))
 
         doc.copy(tiers=doc.tiers ++ tiers, date=Some(docDate))
