@@ -241,7 +241,7 @@ class NLPAnnotator {
             val tempType = temporal.getTimexType.toString
 
             // Let's look for a date that starts within the first 10 characters of the document, and is a full DATE
-            if (start <= 10 && tempType == "DATE" && isoDatePatt.findFirstMatchIn(label).isDefined) Some(label.substring(0, 10))
+            if (start <= 10 && tempType == "DATE" && label != null && isoDatePatt.findFirstMatchIn(label).isDefined) Some(label.substring(0, 10))
             else None
         } else {
             None
